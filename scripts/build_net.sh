@@ -11,3 +11,5 @@ TYP=$(.venv/bin/python -c "import sumo,os;print(os.path.join(sumo.SUMO_HOME,'dat
   --remove-edges.by-vclass pedestrian,bicycle --keep-edges.by-vclass passenger \
   --remove-edges.isolated --keep-edges.components 1 --output.street-names --output.original-names \
   --proj.utm --no-warnings -o data/net/west_london.net.xml
+# drop netconvert's header comment: it records absolute local paths
+perl -0pi -e "s/<!--.*?-->//s" data/net/west_london.net.xml
