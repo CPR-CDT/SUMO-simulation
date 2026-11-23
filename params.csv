@@ -1,0 +1,34 @@
+key,value,unit,grade,source_or_reason,bias_direction_on_harm_estimate,owner_to_check
+background.period_s,0.6 (tuning),s per inserted vehicle,illustrative,randomTrips uniform OD; not yet calibrated to DfT AADF counts,unknown: too high demand exaggerates congestion spillover from halts (overstates harm); too low understates,review team: DfT road-traffic counts for A4/A219/A3220
+fleet.n_taxis,150,vehicles,assumption,order-of-magnitude for one operator's early London deployment; to anchor on announced London plans,more AVs -> more halts -> overstates if real fleet smaller,review team
+fleet.requests_per_h,300,trips/h,assumption,gives ~50% utilisation for 150 AVs,more in-trip AVs at attack onset -> more stranded passengers,
+fleet.kerb_fraction,0.3,share,assumption,London kerbside is mostly restricted (yellow lines; bus stops; bays); needs TfL kerbside data,lower -> more in-lane stops -> overstates P1 failure,review team: TfL kerbside / parking data
+fleet.kerb_space_m,7.0,m,assumption,typical parallel bay length 6-6.6 m plus gap,small,
+fleet.heartbeat_timeout_s,5,s,illustrative,no public figure; operators' MRC trigger timing undisclosed,longer -> vehicles drive further into a jammed zone before halting,review: RQ1 extraction
+fleet.base_assist_per_veh_h,0.5,events per moving AV-hour,illustrative,no public figure for remote-assist rate; drives baseline in-lane holds,higher -> more baseline blockage and assist load,review: remote assistance papers / CPUC or DMV filings
+fleet.stuck_wait_s,90,s,illustrative,proxy for AV hesitation in dense traffic,lower -> stronger congestion->assist feedback,
+fleet.p_stuck_assist,0.2,probability,illustrative,strength of the congestion->assist feedback loop,higher -> stronger feedback (overstates if real AVs rarely ask),sensitivity analysis W7
+fleet.no_show_wait_s,300,s,assumption,typical ride-hail wait before cancelling a no-show,longer -> ghost swarm dwells longer,
+fleet.harbour_max_km,1.5,km,assumption,policy design choice,,
+fleet.pullover_max_m,150,m,assumption,policy design choice (not yet used beyond the 30 m lane-change allowance),,
+assist.operators,6,operators,assumption,ratio 1 per 25 AVs; public ratios not disclosed,fewer -> longer recovery,C4 sweeps this
+assist.service_mean_s,180,s,illustrative,no public figure,longer -> longer recovery,review
+assist.service_cv,0.6,-,illustrative,lognormal spread,,
+assist.fake_service_mean_s,60,s,illustrative,time to triage and dismiss a fake request,longer -> A5 stronger,
+ems.incidents_per_h,6.0,incidents/h,illustrative,probe rate for statistical power; real Cat-1 rate in a 37 km2 area is lower,more calls -> more unit contention (overstates queueing for units),review: LAS open data
+ems.call_to_dispatch_s,30,s,assumption,ARP clock-start approximation,constant offset only,
+ems.on_scene_s,1200,s,assumption,,affects unit availability,LAS data
+ems.p_convey,0.6,probability,assumption,,,LAS data
+ems.handover_s,900,s,assumption,London handover times often longer,shorter -> units free sooner (understates contention),NHS handover data
+ems.amb_speed_factor,1.2,x speed limit,assumption,blue-light vehicles may exceed limits; exact factor not sourced,higher -> faster baseline; delay ratio less affected,
+ems.cat1_mean_target_s,420,s,evidence,NHS England Ambulance Response Programme Cat-1 mean 7 min,,verify citation
+ems.cat1_p90_target_s,900,s,evidence,NHS England ARP Cat-1 90th centile 15 min,,verify citation
+econ.value_of_time_gbp_per_h,15.0,GBP/veh-h,illustrative,placeholder for DfT TAG databook value,linear scale on cost only,replace with TAG A1.3 value
+sim.time_to_teleport_s,300,s,assumption,SUMO default; teleports counted and reported; can hide gridlock (red-team item),teleports remove blockage -> understates harm,sensitivity: -1
+sim.warmup_s / analysis window,900 / 1800-5400,s,design,same window for every arm,,
+attack.A1.radius_m,800,m,illustrative,jammer/base-station footprint scale,larger -> more halts,review: RQ1
+attack.duration_s,1200,s,illustrative,20 min outage,longer -> more harm,
+attack.A3.rate_per_h,300,fake trips/h,illustrative,equal to real demand rate,,
+attack.A5.rate_per_h,600,fake assists/h,illustrative,saturates 6 operators at 60 s each,,
+network,OSM 2026-11-23 bbox 51.465..51.512 / -0.245..-0.170,,evidence,OpenStreetMap (ODbL) via Overpass; netconvert lefthand + opposites.guess,,
+ems sites,Fulham AS; Chiswick AS; Charing Cross H; Chelsea & Westminster H,,evidence,OSM via Nominatim; ambulance unit counts (4; 3) are assumptions,,LAS

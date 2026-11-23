@@ -1,0 +1,13 @@
+{
+ "slug": "policies-v1",
+ "stage": "redteam",
+ "goal": "P0 stop in lane, P1 pull over, P2 safe harbour",
+ "owner": "claude (integrator)",
+ "checks": {
+  "redteam": null,
+  "qa": null,
+  "look": null
+ },
+ "notes": [],
+ "updated": "2026-11-23T15:44Z"
+}

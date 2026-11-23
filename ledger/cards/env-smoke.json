@@ -1,0 +1,15 @@
+{
+ "slug": "env-smoke",
+ "stage": "done-pending-look",
+ "goal": "SUMO 1.28 in venv; OSM West London net; 30-min smoke run",
+ "owner": "claude (integrator)",
+ "checks": {
+  "redteam": null,
+  "qa": null,
+  "look": null
+ },
+ "notes": [
+  "2026-11-23T15:44Z runs/smoke stats: 337x real time, 6 teleports / 2000 veh"
+ ],
+ "updated": "2026-11-23T15:44Z"
+}

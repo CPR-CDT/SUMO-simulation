@@ -1,0 +1,16 @@
+{
+ "slug": "net-demand",
+ "stage": "redteam",
+ "goal": "Stationary background demand; robotaxi requests (CRN streams)",
+ "owner": "claude (integrator)",
+ "checks": {
+  "redteam": null,
+  "qa": null,
+  "look": null
+ },
+ "notes": [
+  "2026-11-23T15:44Z period 1.0 s: ~740 veh, 6.2 m/s mean, stationary 15-90 min",
+  "2026-11-23T15:44Z NOT calibrated to DfT counts yet"
+ ],
+ "updated": "2026-11-23T15:44Z"
+}

@@ -1,0 +1,15 @@
+{
+ "slug": "fms-core",
+ "stage": "redteam",
+ "goal": "Dispatch, heartbeat, MRC, kerb capacity, assist queue",
+ "owner": "claude (integrator)",
+ "checks": {
+  "redteam": null,
+  "qa": null,
+  "look": null
+ },
+ "notes": [
+  "2026-11-23T15:44Z 0 anomalies in 50-min baseline after fixes"
+ ],
+ "updated": "2026-11-23T15:44Z"
+}

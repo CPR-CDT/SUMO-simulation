@@ -1,0 +1,15 @@
+{
+ "slug": "ems-core",
+ "stage": "redteam",
+ "goal": "Incidents, nearest-station dispatch, scene/hospital/return, response time",
+ "owner": "claude (integrator)",
+ "checks": {
+  "redteam": null,
+  "qa": null,
+  "look": null
+ },
+ "notes": [
+  "2026-11-23T15:44Z opposite-lane overtaking disabled: SUMO segfault (DECISIONS.md)"
+ ],
+ "updated": "2026-11-23T15:44Z"
+}

@@ -1,0 +1,15 @@
+{
+ "slug": "demo",
+ "stage": "build",
+ "goal": "Batch, figure, replay, STATUS/VALIDATION",
+ "owner": "claude (integrator)",
+ "checks": {
+  "redteam": null,
+  "qa": null,
+  "look": null
+ },
+ "notes": [
+  "2026-11-23T15:44Z replay viewer works (A1_P0 seed 1)"
+ ],
+ "updated": "2026-11-23T15:44Z"
+}

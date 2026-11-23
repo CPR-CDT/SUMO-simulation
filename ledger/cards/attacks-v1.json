@@ -1,0 +1,15 @@
+{
+ "slug": "attacks-v1",
+ "stage": "redteam",
+ "goal": "A1, A2, A3, A5 from YAML",
+ "owner": "claude (integrator)",
+ "checks": {
+  "redteam": null,
+  "qa": null,
+  "look": null
+ },
+ "notes": [
+  "2026-11-23T15:44Z sources per attack still to be attached from RQ1 extraction (review team)"
+ ],
+ "updated": "2026-11-23T15:44Z"
+}

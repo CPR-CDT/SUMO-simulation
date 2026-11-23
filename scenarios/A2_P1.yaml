@@ -1,0 +1,4 @@
+name: A2_P1
+policy: P1
+attacks:
+  - {type: A2, start_s: 1800, duration_s: 1200}

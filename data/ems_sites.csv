@@ -1,0 +1,5 @@
+kind,name,lat,lon,units,source
+station,Fulham Ambulance Station (150 Seagrave Rd),51.48443,-0.19386,4,OSM via Nominatim 2026-11-23; unit count is an assumption
+station,Chiswick Ambulance Station (Goldhawk Rd),51.4963,-0.2446,3,OSM via Nominatim 2026-11-23; unit count is an assumption
+hospital,Charing Cross Hospital (Fulham Palace Rd),51.48692,-0.21962,,OSM via Nominatim 2026-11-23
+hospital,Chelsea and Westminster Hospital (Fulham Rd),51.48431,-0.18134,,OSM via Nominatim 2026-11-23

@@ -1,0 +1,4 @@
+name: N_0av_A1
+fleet: {n_taxis: 0, requests_per_h: 0.001}
+attacks:
+  - {type: A1, start_s: 1800, duration_s: 1200, centre: hammersmith_broadway, radius_m: 800}
