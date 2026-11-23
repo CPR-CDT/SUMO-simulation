@@ -8,11 +8,10 @@ EPSRC CDT in Cyber Physical Risk — Integrator Module 2026-27, Group A.
 
 **Run it now:** jump to [Quick start](#9-running-the-model). It takes about 5 minutes from clone to your first replay.
 
-> **Status: research prototype (Week 8, November 2026).** The model runs end to end.
-> - Headline results are **not** yet published here.
-> - The first experiment batch is being re-run after a blind red-team review found faults; see [Validation](#8-validation-checks-and-known-limitations).
+> **Status: research prototype with preliminary results (Week 8, November 2026).**
+> - Batch **v4**: 10 arms × 5 paired seeds, plus 13 check arms × 3 seeds, with 0 failed runs. See [§8.4](#84-preliminary-results-batch-v4).
+> - The results are **not yet calibrated or externally validated**.
 > - `STATUS.json` and `VALIDATION.md` state exactly what has and has not been verified.
-> - Every number in this file describes the model's set-up, not its findings.
 
 ---
 
@@ -25,7 +24,7 @@ EPSRC CDT in Cyber Physical Risk — Integrator Module 2026-27, Group A.
 5. [Attacks, policies and scenarios](#5-attacks-policies-and-scenarios)
 6. [Outcome metrics](#6-outcome-metrics)
 7. [Parameters and evidence grades](#7-parameters-and-evidence-grades)
-8. [Validation, checks and known limitations](#8-validation-checks-and-known-limitations)
+8. [Validation, checks, limitations and preliminary results](#8-validation-checks-and-known-limitations)
 9. [Running the model](#9-running-the-model)
 10. [Repository layout](#10-repository-layout)
 11. [Working method](#11-working-method)
@@ -286,17 +285,17 @@ The key ones:
 
 | Check | Expected | Status |
 |---|---|---|
-| Metric unit tests (8, positive and negative cases) | pass | **pass** |
+| Metric unit tests (9, positive and negative cases) | pass | **pass** |
 | Smoke test: 30 min random traffic | runs, few teleports | **pass** (337× real time, 6 teleports per 2,000 vehicles) |
 | Stationarity of the baseline | vehicle count and speed flat after warm-up | **pass** at 1.0 s (≈ 740 vehicles, 6.2 m/s from 15 to 90 min) |
-| N_dur0 (A1, 0 s) / N_r0 (A1, 0 m) | identical to baseline | running (batch null2) |
-| N_base_P1 / N_base_P2 | identical to baseline | running |
-| N_0av_base vs N_0av_A1 | identical EMS outcomes | running |
-| N_infops_A1 | assist wait ≈ 0 | running |
-| **N_noise** (SUMO seed only) | paired noise floor, against which effects are judged | running |
-| N_autoresume_A1 | bounds the "operator needed to restart" assumption | running |
-| N_allkerb_A1_P1 | harm should vanish if it is due to lane blockage | running |
-| N_teleoff_base / N_teleoff_A1_P0 | how much the 300 s teleport hides | running |
+| N_dur0 (A1, 0 s) / N_r0 (A1, 0 m) | identical to baseline | **exactly equal** |
+| N_base_P1 / N_base_P2 | identical to baseline | P2 exactly equal. P1 equal except one non-reproducible late divergence (seed 2, 0.6 veh-h; a rerun matched exactly): open issue |
+| N_0av_base vs N_0av_A1 | identical EMS outcomes | **exactly equal** |
+| N_infops_A1 | assist wait ≈ 0 | **0.00 min**; lane blocking about 60% lower than A1_P0 |
+| **N_noise** (SUMO seed only) | paired noise floor, against which effects are judged | delay ±38 veh-h, lane blocking ±14 AV-min, response ±0.4 min |
+| N_autoresume_A1 | bounds the "operator needed to restart" assumption | lane blocking +453 vs +1,433 AV-min with operators required |
+| N_allkerb_A1_P1 | harm should vanish if it is due to lane blockage | lower (+501 vs +702 AV-min), not zero: assist holds still stand in lanes |
+| N_teleoff_base / N_teleoff_A1_P0 | how much the 300 s teleport hides | **inconclusive**: the baseline itself gridlocks without teleports in some seeds |
 | Known-case face validity | qualitative match to reported incidents (to be confirmed from sources): Cruise, San Francisco, Aug 2023 multi-vehicle stall after connectivity problems; Cruise–ambulance obstruction reports, San Francisco 2023; Waymo, San Francisco, Dec 2025 blackout stalls | planned, week 12 |
 | Global sensitivity (Morris / Sobol) on illustrative parameters | — | planned, week 12 |
 
@@ -319,6 +318,39 @@ The full report and the status of each fault are in [`ledger/reviews/redteam-1.m
 - **Dispatch uses straight-line distance**, both for robotaxis and for the nearest ambulance station; it is not LAS's actual dispatch logic.
 - **Collisions** occur at a low rate and are logged, not prevented.
 - **A4, A6, A7 and CC1** are not yet implemented; there is no coordinator agent (detection delay, geofencing) yet.
+
+### 8.4 Preliminary results (batch v4)
+
+![Results v4](docs/results/fig_v4.png)
+
+These are paired differences from the same-seed baseline: mean ± 95% t-interval over **5 seeds**, judged against the N_noise floor. Full tables are in [`docs/results/results_v4.md`](docs/results/results_v4.md), and the check arms are in [`docs/results/checks_null4.md`](docs/results/checks_null4.md).
+
+Baseline values for reference:
+- background delay 122 veh-h over 1 h;
+- AV lane blocking 109 AV-min;
+- ambulance response 8.2 min mean;
+- unserved trip share 0.23.
+
+| Arm | Background delay (veh-h) | AV lane blocking (AV-min) | Stranded pax (pax-min) | Assist wait (min) | Unserved trips (pp) | Ambulance response (min) |
+|---|---|---|---|---|---|---|
+| A1 zonal link loss, P0 stop in lane | +208 ± 105 | +1,433 ± 350 | +944 ± 247 | +7.4 ± 2.8 | +19 ± 10 | +3.2 ± 3.8 |
+| A1, P1 pull over | +87 ± 31 | +702 ± 270 | +973 ± 231 | +6.9 ± 2.4 | +13 ± 9 | +1.4 ± 1.3 |
+| A1, P2 safe harbour | +47 ± 25 | +338 ± 291 | +769 ± 347 | +5.5 ± 3.1 | +9 ± 6 | +0.3 ± 0.9 |
+| **A2 fleet outage, P0 stop in lane** | **+566 ± 34** | **+3,314 ± 613** | **+2,259 ± 342** | **+14.3 ± 2.3** | **+58 ± 9** | **+7.4 ± 5.1** |
+| A2, P1 pull over | +212 ± 110 | +1,171 ± 289 | +2,001 ± 323 | +14.1 ± 2.2 | +46 ± 7 | +4.7 ± 4.7 |
+| A2, P2 safe harbour | +38 ± 38 | +416 ± 182 | +1,911 ± 240 | +13.9 ± 2.0 | +42 ± 5 | −0.4 ± 1.7 |
+| A3 ghost bookings (P0) | +24 ± 35 | +184 ± 232 | +23 ± 78 | +0.6 ± 1.4 | +2 ± 2 | +1.7 ± 3.0 |
+| A5 assist flood, above capacity (P0) | +125 ± 94 | +749 ± 463 | +547 ± 398 | +10.4 ± 3.5 | +16 ± 10 | +2.2 ± 2.6 |
+| A5 assist flood, below capacity (P0) | +2 ± 9 | +0 ± 10 | −1 ± 14 | +0.1 ± 0.1 | +1 ± 1 | −0.2 ± 0.5 |
+
+**What the model currently says** (preliminary; the assumptions are in §7 and the limitations in §8.3):
+1. **A fleet-wide backend outage is the dominant threat**, and **stop-in-lane is the worst response to it**. It roughly quintuples background delay in the analysis hour and adds about 7 minutes to mean ambulance response. It is the only ambulance effect whose CI excludes zero at n = 5. Probe ambulances agree: a 25 ± 23 pp higher share are stuck for 5 minutes or more.
+2. **Where vehicles stop matters more than whether they stop.** Policy ordering P0 > P1 > P2 holds for delay and lane blocking under both A1 and A2. Driving to a safe harbour removes about 93% of A2's extra background delay and the ambulance effect.
+3. **No stopping policy helps the passengers.** Stranded-passenger minutes and assist waits (about 14 min under A2) are about the same under P0, P1 and P2. Recovery is limited by **remote-assist capacity**, not by where vehicles wait. With unlimited operators or auto-resume, A1 lane blocking falls by 60–70%. This is the lever studied in C4.
+4. **The remote-assist centre is itself an attack surface, with a cliff.** Flooding it above operator capacity produces physical blockage and delay without touching any vehicle. The same attack below capacity has no measurable effect.
+5. **Ghost bookings (A3) at the tested intensity** have small effects that are not statistically significant.
+
+**How far to trust these numbers:** 5 seeds; uncalibrated background demand; illustrative assist parameters; ambulances without the SUMO bluelight device; a single study area and time of day. The direction and ordering of effects are the robust part. Treat magnitudes as illustrative until calibration and sensitivity analysis (weeks 11–12) are done.
 
 ## 9. Running the model
 

@@ -1,15 +1,16 @@
 {
  "slug": "fms-core",
- "stage": "redteam",
+ "stage": "qa",
  "goal": "Dispatch, heartbeat, MRC, kerb capacity, assist queue",
  "owner": "claude (integrator)",
  "checks": {
-  "redteam": null,
+  "redteam": "round 1 done (ledger/reviews/redteam-1.md); fixes applied; round 2 due on v4 code",
   "qa": null,
   "look": null
  },
  "notes": [
-  "2026-11-23T15:44Z 0 anomalies in 50-min baseline after fixes"
+  "2026-11-23T15:44Z 0 anomalies in 50-min baseline after fixes",
+  "2026-11-23T20:11Z v4 batch: 0 failures; null checks pass (see VALIDATION.md)"
  ],
- "updated": "2026-11-23T15:44Z"
+ "updated": "2026-11-23T20:11Z"
 }

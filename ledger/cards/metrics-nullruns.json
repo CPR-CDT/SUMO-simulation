@@ -1,16 +1,17 @@
 {
  "slug": "metrics-nullruns",
- "stage": "build",
+ "stage": "qa",
  "goal": "Metrics + unit tests + null-run table",
  "owner": "claude (integrator)",
  "checks": {
-  "redteam": null,
+  "redteam": "round 1 done (ledger/reviews/redteam-1.md); fixes applied; round 2 due on v4 code",
   "qa": null,
   "look": null
  },
  "notes": [
   "2026-11-23T15:44Z 6 metric tests pass",
-  "2026-11-23T15:44Z null batch running"
+  "2026-11-23T15:44Z null batch running",
+  "2026-11-23T20:11Z v4 batch: 0 failures; null checks pass (see VALIDATION.md)"
  ],
- "updated": "2026-11-23T15:44Z"
+ "updated": "2026-11-23T20:11Z"
 }

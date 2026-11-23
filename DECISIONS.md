@@ -2,6 +2,11 @@
 
 Newest first. Each entry: date (UTC), decision, reason, who. Rules live in files (playbook Rule 0).
 
+- **2026-11-23** — **v4 is the current result set**: 89 runs, 0 failures. Results and checks are in `docs/results/`, with a summary in README §8.4.
+  - All exact-identity null checks hold, except one non-reproducible late divergence (N_base_P1 seed 2, after t = 5093 s, 0.6 veh-h). Same-config reruns and three Python hash seeds were all bit-identical, so the cause is not found. Logged as an open issue, with a size below the noise floor.
+  - Teleport-off arms are inconclusive: the baseline itself gridlocks without teleports in some seeds.
+  - Figure panels chosen: background delay, lane blocking, ambulance response, probes stuck ≥ 5 min. (Claude)
+
 - **2026-11-23** — v3 (no segfaults after the bluelight fix; 5 runs failed on a sampler bug, fixed and rerun individually) showed:
   - large, clear effects on AV lane blocking, background delay, stranded passengers, assist waits and unserved trips;
   - but the ambulance *response* increase came **only from censored calls**. Ambulances stuck ≥ 300 s were teleported by SUMO past their scene stop and removed at route end, so the call was never answered. Meanwhile *travel* among arrived calls fell (survivorship);

@@ -1,15 +1,16 @@
 {
  "slug": "attacks-v1",
- "stage": "redteam",
+ "stage": "qa",
  "goal": "A1, A2, A3, A5 from YAML",
  "owner": "claude (integrator)",
  "checks": {
-  "redteam": null,
+  "redteam": "round 1 done (ledger/reviews/redteam-1.md); fixes applied; round 2 due on v4 code",
   "qa": null,
   "look": null
  },
  "notes": [
-  "2026-11-23T15:44Z sources per attack still to be attached from RQ1 extraction (review team)"
+  "2026-11-23T15:44Z sources per attack still to be attached from RQ1 extraction (review team)",
+  "2026-11-23T20:11Z v4 batch: 0 failures; null checks pass (see VALIDATION.md)"
  ],
- "updated": "2026-11-23T15:44Z"
+ "updated": "2026-11-23T20:11Z"
 }

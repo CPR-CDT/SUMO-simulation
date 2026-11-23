@@ -1,15 +1,16 @@
 {
  "slug": "env-smoke",
- "stage": "done-pending-look",
+ "stage": "done",
  "goal": "SUMO 1.28 in venv; OSM West London net; 30-min smoke run",
  "owner": "claude (integrator)",
  "checks": {
-  "redteam": null,
+  "redteam": "round 1 done (ledger/reviews/redteam-1.md); fixes applied; round 2 due on v4 code",
   "qa": null,
   "look": null
  },
  "notes": [
-  "2026-11-23T15:44Z runs/smoke stats: 337x real time, 6 teleports / 2000 veh"
+  "2026-11-23T15:44Z runs/smoke stats: 337x real time, 6 teleports / 2000 veh",
+  "2026-11-23T20:11Z v4 batch: 0 failures; null checks pass (see VALIDATION.md)"
  ],
- "updated": "2026-11-23T15:44Z"
+ "updated": "2026-11-23T20:11Z"
 }

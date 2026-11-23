@@ -72,7 +72,7 @@ print("\n".join(lines))
 # ---- figure: four panels, attack on x, policy as colour (reference palette slots 1-3, fixed order)
 POL = {"P0": ("#2a78d6", "P0 stop in lane"), "P1": ("#eb6834", "P1 pull over"), "P2": ("#1baf7a", "P2 safe harbour")}
 SURF, INK, MUTED = "#fcfcfb", "#0b0b0b", "#52514e"
-panels = [METRICS[0], METRICS[2], METRICS[4], METRICS[5]]
+panels = [METRICS[4], METRICS[5], METRICS[0], METRICS[10]]
 attacks = ["A1", "A2", "A3", "A5"]
 fig, axes = plt.subplots(2, 2, figsize=(11, 7), facecolor=SURF)
 for ax, (col, label, _) in zip(axes.flat, panels):
@@ -100,11 +100,11 @@ for ax, (col, label, _) in zip(axes.flat, panels):
     for s in ("left", "bottom"):
         ax.spines[s].set_color("#c9c8c2")
 handles = [plt.Rectangle((0, 0), 1, 1, color=c) for c, _ in POL.values()]
-fig.legend(handles, [l for _, l in POL.values()], loc="upper center", ncol=3, frameon=False, fontsize=10,
+fig.legend(handles, [l for _, l in POL.values()], loc="upper center", bbox_to_anchor=(0.5, 0.955), ncol=3, frameon=False, fontsize=10,
            labelcolor=INK)
-fig.suptitle("Change vs same-seed baseline (mean ± 95% CI); A3/A5 run under P0 only", y=0.995, fontsize=11,
+fig.suptitle("Change vs same-seed baseline (mean ± 95% CI, 5 paired seeds); A3/A5 run under P0 only", y=0.995, fontsize=11,
              color=MUTED)
-fig.tight_layout(rect=(0, 0, 1, 0.94))
+fig.tight_layout(rect=(0, 0, 1, 0.91))
 out_png = src.parent / f"fig_{tag}.png"
 fig.savefig(out_png, dpi=160, facecolor=SURF)
 print("wrote", out_md, out_png)

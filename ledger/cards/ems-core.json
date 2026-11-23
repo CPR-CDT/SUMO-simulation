@@ -1,15 +1,16 @@
 {
  "slug": "ems-core",
- "stage": "redteam",
+ "stage": "qa",
  "goal": "Incidents, nearest-station dispatch, scene/hospital/return, response time",
  "owner": "claude (integrator)",
  "checks": {
-  "redteam": null,
+  "redteam": "round 1 done (ledger/reviews/redteam-1.md); fixes applied; round 2 due on v4 code",
   "qa": null,
   "look": null
  },
  "notes": [
-  "2026-11-23T15:44Z opposite-lane overtaking disabled: SUMO segfault (DECISIONS.md)"
+  "2026-11-23T15:44Z opposite-lane overtaking disabled: SUMO segfault (DECISIONS.md)",
+  "2026-11-23T20:11Z v4 batch: 0 failures; null checks pass (see VALIDATION.md)"
  ],
- "updated": "2026-11-23T15:44Z"
+ "updated": "2026-11-23T20:11Z"
 }
