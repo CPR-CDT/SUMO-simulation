@@ -26,7 +26,8 @@ if "error" in df:
 METRICS = [  # column, label, unit scale
     ("resp_mean_s", "Ambulance response, mean (min)", 1 / 60),
     ("resp_p90_s", "Ambulance response, P90 (min)", 1 / 60),
-    ("travel_over_freeflow_mean", "Ambulance travel / free-flow", 1),
+    ("travel_mean_s", "Ambulance travel time (min)", 1 / 60),
+    ("unit_wait_mean_s", "Wait for a free unit (min)", 1 / 60),
     ("bg_timeloss_veh_h", "Background delay (veh-h)", 1),
     ("lane_block_min", "AV lane-blocking (AV-min)", 1),
     ("stranded_pax_min", "Stranded passengers (pax-min)", 1),
@@ -69,7 +70,7 @@ print("\n".join(lines))
 # ---- figure: four panels, attack on x, policy as colour (reference palette slots 1-3, fixed order)
 POL = {"P0": ("#2a78d6", "P0 stop in lane"), "P1": ("#eb6834", "P1 pull over"), "P2": ("#1baf7a", "P2 safe harbour")}
 SURF, INK, MUTED = "#fcfcfb", "#0b0b0b", "#52514e"
-panels = [METRICS[0], METRICS[1], METRICS[3], METRICS[4]]
+panels = [METRICS[0], METRICS[2], METRICS[4], METRICS[5]]
 attacks = ["A1", "A2", "A3", "A5"]
 fig, axes = plt.subplots(2, 2, figsize=(11, 7), facecolor=SURF)
 for ax, (col, label, _) in zip(axes.flat, panels):

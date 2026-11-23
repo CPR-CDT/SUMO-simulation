@@ -1,0 +1,4 @@
+name: N_autoresume_A1
+fleet: {auto_resume_on_restore: true}
+attacks:
+  - {type: A1, start_s: 1800, duration_s: 1200, centre: hammersmith_broadway, radius_m: 800}

@@ -18,7 +18,8 @@ DEFAULTS: dict = {
     "net": "data/net/west_london.net.xml",
     "sim": {
         "end_s": 5400,            # 90 min simulated
-        "warmup_s": 900,          # discarded from all metrics
+        "warmup_s": 900,          # documentation only: the analysis window starts at 1800 s, after warm-up
+        "sumo_seed_offset": 0,    # noise-floor arm: changes only SUMO's internal RNG
         "step_s": 1.0,
         "time_to_teleport_s": 300,  # SUMO default; teleports are counted and reported
         "meandata_period_s": 300,
@@ -43,6 +44,7 @@ DEFAULTS: dict = {
         "base_assist_per_veh_h": 0.5,   # routine remote-assist events per moving AV-hour
         "stuck_wait_s": 90,             # waiting longer than this in traffic may trigger an assist request
         "p_stuck_assist": 0.2,
+        "auto_resume_on_restore": False,  # True = no operator needed once the link is back (sensitivity)
         "harbour_max_km": 1.5,
         "pullover_max_m": 150,
     },
@@ -64,7 +66,8 @@ DEFAULTS: dict = {
         "cat1_p90_target_s": 900,
         "cat1_mean_target_s": 420,
     },
-    "analysis": {"start_s": 1800, "end_s": 5400},   # same window for every arm, attack or not
+    "analysis": {"start_s": 1800, "end_s": 5400,    # same window for every arm, attack or not
+                 "calls_end_s": 4200},               # calls scored only up to here: >=20 min to arrive before sim end
     "policy": "P0",               # P0 stop-in-lane | P1 pull-over | P2 safe-harbour
     "attacks": [],
     "econ": {"value_of_time_gbp_per_h": 15.0},

@@ -49,6 +49,13 @@ class Taxi:
     resume_state: str | None = None
     in_queue: bool = False
     stuck_flagged: bool = False
+    idx: int = 0
+    moving_s: float = 0.0                # moving, connected seconds (clock for routine assist events)
+    next_hold_at: float = 0.0
+    n_hold: int = 0
+    n_stuck: int = 0
+    n_assist: int = 0
+    dwell_rec: dict | None = None        # open record of a pickup/drop-off dwell that stands in a lane
 
 
 @dataclass
@@ -59,6 +66,7 @@ class Amb:
     inc: object = None
     t_state: float = 0.0
     record: dict = field(default_factory=dict)
+    inserted: bool = False
 
 
 class Run:
@@ -68,7 +76,7 @@ class Run:
         self.out.mkdir(parents=True, exist_ok=True)
         self.w: World = build(cfg)
         self.att = Attacks(cfg["attacks"], self.w, cfg["seed"])
-        self.rng = np.random.default_rng([cfg["seed"], 404])
+        self.seed = cfg["seed"]
         fl = cfg["fleet"]
         reqs = taxi_requests(cfg, self.w) + self.att.ghost_requests()
         reqs.sort(key=lambda r: r.t)
@@ -78,6 +86,7 @@ class Run:
         self.inc_feed = deque(ems_incidents(cfg, self.w))
         self.inc_queue: list = []
         self.fake_assist = deque(sorted(self.att.fake_assist_times()))
+        self.n_fake = 0
         self.kerb_used: Counter = Counter()
         self.taxis: dict[str, Taxi] = {}
         self.ambs: dict[str, Amb] = {}
@@ -94,6 +103,19 @@ class Run:
         self.replay: list = []
         self.t = 0.0
 
+    def _gen(self, tag: int, idx: int, k: int):
+        """Common random numbers: draw k of entity idx for purpose tag is the same in every arm."""
+        return np.random.default_rng([self.seed, tag, idx, k])
+
+    def _service_time(self, mean: float, tag: int, idx: int, k: int) -> float:
+        a = self.cfg["assist"]
+        sig = math.sqrt(math.log(1 + a["service_cv"] ** 2))
+        return float(self._gen(tag, idx, k).lognormal(math.log(mean) - sig * sig / 2, sig))
+
+    def _next_hold_gap(self, tx) -> float:
+        rate = self.cfg["fleet"]["base_assist_per_veh_h"]
+        return float(self._gen(701, tx.idx, tx.n_hold).exponential(3600 / rate)) if rate > 0 else float("inf")
+
     # ------------------------------------------------------------------ SUMO plumbing
     def start(self):
         c = self.cfg
@@ -105,7 +127,7 @@ class Run:
         sumo_bin = shutil.which("sumo") or str(Path(sys.executable).parent / "sumo")
         cmd = [sumo_bin, "-n", str(C.ROOT / c["net"]), "-r", background_routes(c),
                "-a", f"{vtypes_file(c, self.out)},{edgedata}",
-               "--seed", str(c["seed"]), "--step-length", str(c["sim"]["step_s"]),
+               "--seed", str(c["seed"] + c["sim"].get("sumo_seed_offset", 0)), "--step-length", str(c["sim"]["step_s"]),
                "--time-to-teleport", str(c["sim"]["time_to_teleport_s"]),
                "--no-step-log", "true", "--no-warnings", "true",
                "--statistic-output", str(self.out / "stats.xml"),
@@ -118,7 +140,8 @@ class Run:
             T.route.add(f"r_{vid}", [stand])
             pos = min(10 + 7 * (i // len(self.w.stands)), self.w.edge_len[stand] - 2)
             T.vehicle.add(vid, f"r_{vid}", typeID="robotaxi", depart="0", departPos=str(pos), departSpeed="0")
-            self.taxis[vid] = Taxi(vid)
+            self.taxis[vid] = Taxi(vid, idx=i)
+            self.taxis[vid].next_hold_at = self._next_hold_gap(self.taxis[vid])
             self._place_stop(self.taxis[vid], stand, pos + 1, "kerb", force=True)
 
     def _lane(self, edge: str, vc: str = "passenger") -> int:
@@ -158,6 +181,7 @@ class Run:
     def _go(self, tx: Taxi, edge: str, kind: str = "kerb") -> bool:
         """Send a taxi to a stop on `edge`, ending its current stop if any."""
         vid = tx.vid
+        self._close_dwell(tx)
         pos = self.w.edge_len[edge] * 0.6
         if T.vehicle.getRoadID(vid) == edge and T.vehicle.getLanePosition(vid) > pos - 20:
             # stop would be behind us: caller picks another target
@@ -237,6 +261,12 @@ class Run:
         tx.halt = {"vid": tx.vid, "cause": cause, "kind": kind, "start": self.t, "end": None,
                    "with_passenger": tx.resume_state in ("TO_DROPOFF", "AT_DROPOFF"),
                    "edge": tx.target[0] if tx.target else None}
+
+    def _close_dwell(self, tx: Taxi):
+        if tx.dwell_rec:
+            tx.dwell_rec["end"] = self.t
+            self.halts.append(tx.dwell_rec)
+            tx.dwell_rec = None
 
     def _close_halt(self, tx: Taxi):
         if tx.halt:
@@ -350,14 +380,18 @@ class Run:
                 else:
                     tx.in_queue = False  # lost link again before help arrived; it will re-request
         while self.fake_assist and self.fake_assist[0] <= self.t:
-            self.queue.append((self.fake_assist.popleft(), "fake", None))
+            self.n_fake += 1
+            self.queue.append((self.fake_assist.popleft(), "fake", f"fake{self.n_fake}"))
         if not self.att.assist_ok(self.t):
             return
         while self.queue and len(self.ops_busy) < a["operators"]:
             t_req, kind, vid = self.queue.popleft()
-            mean = a["fake_service_mean_s"] if kind == "fake" else a["service_mean_s"]
-            sig = math.sqrt(math.log(1 + a["service_cv"] ** 2))
-            dur = float(self.rng.lognormal(math.log(mean) - sig * sig / 2, sig))
+            if kind == "fake":
+                dur = self._service_time(a["fake_service_mean_s"], 704, 0, int(vid[4:]))
+            else:
+                tx = self.taxis[vid]
+                dur = self._service_time(a["service_mean_s"], 703, tx.idx, tx.n_assist)
+                tx.n_assist += 1
             self.ops_busy.append((self.t + dur, kind, vid))
             self.assist_waits.append({"t_req": t_req, "t_start": self.t, "wait": self.t - t_req, "kind": kind,
                                       "vid": vid})
@@ -391,6 +425,10 @@ class Run:
             st = tx.state
             stopped = T.vehicle.isStopped(vid)
             # link restored: halted vehicles ask the assist centre to clear them
+            if (st == "HALTED" and tx.link and tx.halt and tx.halt["cause"] == "link"
+                    and fl.get("auto_resume_on_restore", False)):
+                self._recover(tx)   # sensitivity arm: no operator needed once the link is back
+                continue
             if st in ("HALTED", "HOLD_ASSIST") and tx.link and tx.halt and not tx.in_queue:
                 self._request_assist(tx, "recovery" if tx.halt["cause"] == "link" else "hold")
                 continue
@@ -402,6 +440,10 @@ class Run:
             # arrivals at stops
             if st in ("TO_PICKUP", "TO_DROPOFF", "TO_STAND") and stopped and tx.target \
                     and T.vehicle.getRoadID(vid) == tx.target[0]:
+                if st in ("TO_PICKUP", "TO_DROPOFF") and tx.target[1] == "lane":
+                    tx.dwell_rec = {"vid": vid, "cause": "dwell_fake" if tx.req.fake else "dwell", "kind": "lane",
+                                    "start": self.t, "end": None, "with_passenger": st == "TO_DROPOFF",
+                                    "edge": tx.target[0]}
                 if st == "TO_PICKUP":
                     r = tx.req
                     tx.state = "AT_PICKUP"
@@ -433,12 +475,19 @@ class Run:
                 continue
             # routine and congestion-triggered remote-assist holds (moving, connected vehicles)
             if st in MOVING_STATES and st != "TO_HARBOUR" and tx.link and not stopped:
-                hit = self.rng.random() < fl["base_assist_per_veh_h"] / 3600 * dt
+                tx.moving_s += dt
+                hit = False
+                if tx.moving_s >= tx.next_hold_at:
+                    hit = True
+                    tx.n_hold += 1
+                    tx.next_hold_at = tx.moving_s + self._next_hold_gap(tx)
                 if check_stuck:
                     wt = T.vehicle.getWaitingTime(vid)
                     if wt > fl["stuck_wait_s"] and not tx.stuck_flagged:
                         tx.stuck_flagged = True
-                        hit = hit or self.rng.random() < fl["p_stuck_assist"]
+                        u = self._gen(702, tx.idx, tx.n_stuck).random()
+                        tx.n_stuck += 1
+                        hit = hit or u < fl["p_stuck_assist"]
                     elif wt == 0:
                         tx.stuck_flagged = False
                 if hit:
@@ -487,7 +536,7 @@ class Run:
             return False
         a = Amb(aid, st, "TO_SCENE", inc, self.t)
         a.record = {"iid": inc.iid, "t_call": inc.t, "t_dispatch": self.t, "station": st.name,
-                    "edge": inc.edge, "route_m": ff.length, "freeflow_s": ff.travelTime, "t_arrive": None,
+                    "edge": inc.edge, "route_m": ff.length, "route_est_s": ff.travelTime, "t_arrive": None,
                     "blocked_s": 0.0}
         self.ambs[aid] = a
         return True
@@ -495,9 +544,14 @@ class Run:
     def _amb_update(self, a: Amb):
         e = self.cfg["ems"]
         if a.aid not in self.live:
-            if a.state != "DONE" and self.t - a.t_state > 5:  # not yet inserted; give it time
-                pass
+            if a.inserted:  # removed by SUMO (route end after a teleport, collision): free the unit
+                self.anomalies["amb_lost"] += 1
+                self.ambs.pop(a.aid, None)
+                self.free_units[a.station.name] += 1
             return
+        if not a.inserted:
+            a.inserted = True
+            a.record["t_insert"] = self.t
         stopped = T.vehicle.isStopped(a.aid)
         if a.state == "TO_SCENE":
             if T.vehicle.getSpeed(a.aid) < 1.0 and not stopped:
@@ -508,7 +562,7 @@ class Run:
                 self.incidents.append(a.record)
                 a.state, a.t_state = "ON_SCENE", self.t
         elif a.state == "ON_SCENE" and self.t - a.t_state >= e["on_scene_s"]:
-            convey = self.rng.random() < e["p_convey"]
+            convey = a.inc.u_convey < e["p_convey"]
             if convey:
                 ix, iy = self.w.xy(a.inc.edge)
                 h = min(self.w.hospitals, key=lambda s: math.dist((s.x, s.y), (ix, iy)))
@@ -555,6 +609,7 @@ class Run:
             for vid in T.simulation.getArrivedIDList():
                 if vid.startswith("taxi"):
                     self.anomalies["taxi_left_network"] += 1
+                    self._release_kerb(self.taxis[vid])
             while self.req_feed and self.req_feed[0].t <= self.t:
                 r = self.req_feed.popleft()
                 self.req_log[r.rid] = {"rid": r.rid, "t": r.t, "fake": r.fake, "status": "pending",
@@ -576,6 +631,10 @@ class Run:
             if tx.halt:
                 tx.halt["censored"] = True
                 self._close_halt(tx)
+            self._close_dwell(tx)
+        for t_req, kind, vid in self.queue:   # requests never served: wait censored at the end
+            self.assist_waits.append({"t_req": t_req, "t_start": None, "wait": self.t - t_req, "kind": kind,
+                                      "vid": vid, "censored": True})
         T.close()
         return self._write(time.time() - wall0)
 
@@ -589,6 +648,7 @@ class Run:
                         "assist_queue_fake": len([q for q in self.queue if q[1] == "fake"]),
                         "pending_requests": len(self.pending), "amb_active": len(self.ambs),
                         "inc_waiting_unit": len(self.inc_queue),
+                        "pending_insert": len(T.simulation.getPendingVehicles()),
                         **{f"st_{k}": v for k, v in states.items()}})
 
     def _sample_replay(self):

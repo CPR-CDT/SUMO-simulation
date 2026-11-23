@@ -1,0 +1,4 @@
+name: N_teleoff_A1_P0
+sim: {time_to_teleport_s: -1}
+attacks:
+  - {type: A1, start_s: 1800, duration_s: 1200, centre: hammersmith_broadway, radius_m: 800}

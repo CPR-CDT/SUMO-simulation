@@ -1,0 +1,3 @@
+name: A5_low
+attacks:
+  - {type: A5, start_s: 1800, duration_s: 1200, rate_per_h: 200}

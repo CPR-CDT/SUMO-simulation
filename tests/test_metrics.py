@@ -12,7 +12,7 @@ def test_overlap():
 
 def _inc(iid, tc, td, ta, ff=100, blocked=0):
     return {"iid": iid, "t_call": tc, "t_dispatch": td, "t_arrive": ta, "response_s": ta - tc,
-            "freeflow_s": ff, "blocked_s": blocked}
+            "route_est_s": ff, "blocked_s": blocked}
 
 
 def test_ems_basic_and_window():
@@ -21,6 +21,7 @@ def test_ems_basic_and_window():
     assert m["n_calls"] == 2 and m["n_censored"] == 0
     assert math.isclose(m["resp_mean_s"], (300 + 130) / 2)
     assert m["frac_over_p90_target"] == 0
+    assert math.isclose(m["unit_wait_mean_s"], 30) and math.isclose(m["travel_mean_s"], (270 + 100) / 2)
 
 
 def test_ems_never_arrived_is_kept_not_dropped():
@@ -39,6 +40,19 @@ def test_halts_censored_and_split():
     assert m["kerb_halt_min"] == 0  # outside window
     assert math.isclose(m["stranded_pax_min"], 5)
     assert m["n_halts_link"] == 2 and m["n_halts_assist"] == 0
+
+
+def test_lane_dwell_counted_as_blocking_but_not_as_halt():
+    halts = [{"kind": "lane", "cause": "dwell_fake", "start": 0, "end": 300, "with_passenger": False}]
+    m = halt_metrics(halts, 0, 1000)
+    assert m["lane_block_min"] == 5 and m["lane_block_dwell_min"] == 5
+    assert m["n_lane_dwells"] == 1 and m["n_halts_link"] == 0 and m["n_halts_assist"] == 0
+
+
+def test_assist_counts_censored_queue():
+    w = [{"t_req": 5, "wait": 50, "kind": "recovery"}, {"t_req": 6, "wait": 4000, "kind": "recovery", "censored": True}]
+    m = assist_metrics(w, 0, 10)
+    assert m["assist_n_censored"] == 1 and m["assist_wait_max_s"] == 4000
 
 
 def test_requests_exclude_fake():

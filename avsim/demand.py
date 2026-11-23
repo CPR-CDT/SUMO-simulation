@@ -69,6 +69,7 @@ class Incident:
     iid: str
     t: float
     edge: str
+    u_convey: float = 0.0   # pre-drawn so the convey decision is identical in every arm
 
 
 def taxi_requests(cfg: dict, w: World) -> list[Request]:
@@ -91,11 +92,12 @@ def ems_incidents(cfg: dict, w: World) -> list[Incident]:
     cands = [e for e in w.stop_edges if (e, "emergency") in w.lane_for]
     weights = np.array([w.edge_len[e] for e in cands])
     weights /= weights.sum()
+    rng_c = np.random.default_rng([cfg["seed"], 203])
     t, out, i = 0.0, [], 0
     while True:
         t += rng.exponential(1 / rate)
         if t >= cfg["sim"]["end_s"]:
             break
-        out.append(Incident(f"inc{i}", t, cands[rng.choice(len(cands), p=weights)]))
+        out.append(Incident(f"inc{i}", t, cands[rng.choice(len(cands), p=weights)], float(rng_c.random())))
         i += 1
     return out
