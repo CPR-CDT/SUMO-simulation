@@ -103,6 +103,22 @@ def assist_metrics(waits: list[dict], w0: float, w1: float) -> dict:
             "assist_wait_p90_s": float(np.percentile(real, 90)), "assist_wait_max_s": float(real.max())}
 
 
+def probe_metrics(probes: list[dict], w0: float, w1: float) -> dict:
+    """Blue-light probe trips dispatched in [w0, w1): travel time, travel / route estimate, share delayed,
+    share teleported (= stuck >= time_to_teleport somewhere). Censored probes are kept (travel to run end)."""
+    P = [p for p in probes if w0 <= p["t_dispatch"] < w1]
+    if not P:
+        return {"probe_n": 0}
+    tr = np.array([p["travel_s"] for p in P], float)
+    est = np.array([max(p["route_est_s"], 1.0) for p in P], float)
+    ratio = tr / est
+    return {"probe_n": len(P), "probe_censored": sum(1 for p in P if p.get("censored")),
+            "probe_travel_mean_s": float(tr.mean()), "probe_travel_p90_s": float(np.percentile(tr, 90)),
+            "probe_ratio_mean": float(ratio.mean()), "probe_ratio_p90": float(np.percentile(ratio, 90)),
+            "probe_share_ratio_over_1_5": float((ratio > 1.5).mean()),
+            "probe_share_teleported": float(np.mean([p["teleported"] for p in P]))}
+
+
 def summarise(run, wall_s: float) -> dict:
     c = run.cfg
     w0, w1 = c["analysis"]["start_s"], c["analysis"]["end_s"]
@@ -113,6 +129,7 @@ def summarise(run, wall_s: float) -> dict:
          "window": [w0, w1]}
     s.update(ems_metrics(run.incidents, calls, w0, c["analysis"]["calls_end_s"], end, c["ems"]["cat1_p90_target_s"],
                          c["ems"]["call_to_dispatch_s"]))
+    s.update(probe_metrics(run.probe_log, w0, c["analysis"]["calls_end_s"]))
     s.update(network_delay_veh_h(run.out / "edgedata.xml", w0, w1))
     s["bg_delay_cost_gbp"] = s.get("bg_timeloss_veh_h", 0) * c["econ"]["value_of_time_gbp_per_h"]
     s.update(halt_metrics(run.halts, w0, w1))

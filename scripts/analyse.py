@@ -33,6 +33,8 @@ METRICS = [  # column, label, unit scale
     ("stranded_pax_min", "Stranded passengers (pax-min)", 1),
     ("assist_wait_mean_s", "Assist queue wait, mean (min)", 1 / 60),
     ("unserved_frac", "Unserved trip share", 1),
+    ("probe_ratio_mean", "Probe ambulance travel / route estimate", 1),
+    ("probe_share_teleported", "Probe ambulances stuck ≥5 min (share)", 1),
 ]
 base = df[df["name"] == "baseline"].set_index("seed")
 rows = []

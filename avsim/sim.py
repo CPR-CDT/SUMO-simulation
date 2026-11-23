@@ -23,7 +23,7 @@ import numpy as np
 
 from . import config as C
 from .attacks import Attacks
-from .demand import background_routes, ems_incidents, taxi_requests, vtypes_file
+from .demand import background_routes, ems_incidents, ems_probes, taxi_requests, vtypes_file
 from .world import World, build
 
 if os.environ.get("AVSIM_TRACI") == "1":
@@ -67,6 +67,8 @@ class Amb:
     t_state: float = 0.0
     record: dict = field(default_factory=dict)
     inserted: bool = False
+    last_edge: str | None = None
+    n_reinsert: int = 0
 
 
 class Run:
@@ -85,6 +87,9 @@ class Run:
         self.req_log: dict[str, dict] = {}
         self.inc_feed = deque(ems_incidents(cfg, self.w))
         self.inc_queue: list = []
+        self.probe_feed = deque(ems_probes(cfg, self.w))
+        self.probes: dict[str, dict] = {}       # live probe id -> record
+        self.probe_log: list[dict] = []
         self.fake_assist = deque(sorted(self.att.fake_assist_times()))
         self.n_fake = 0
         self.kerb_used: Counter = Counter()
@@ -544,6 +549,11 @@ class Run:
     def _amb_update(self, a: Amb):
         e = self.cfg["ems"]
         if a.aid not in self.live:
+            if a.inserted and a.state == "TO_SCENE" and a.last_edge and a.n_reinsert < 3:
+                # SUMO teleported the ambulance past its stop and removed it at route end. Put it back where it was
+                # last seen so the call is answered late, not never (the teleport still skips part of the jam).
+                if self._reinsert_amb(a):
+                    return
             if a.inserted:  # removed by SUMO (route end after a teleport, collision): free the unit
                 self.anomalies["amb_lost"] += 1
                 self.ambs.pop(a.aid, None)
@@ -552,6 +562,9 @@ class Run:
         if not a.inserted:
             a.inserted = True
             a.record["t_insert"] = self.t
+        road = T.vehicle.getRoadID(a.aid)
+        if road and not road.startswith(":"):
+            a.last_edge = road
         stopped = T.vehicle.isStopped(a.aid)
         if a.state == "TO_SCENE":
             if T.vehicle.getSpeed(a.aid) < 1.0 and not stopped:
@@ -583,6 +596,48 @@ class Run:
             a.state = "DONE"
             del self.ambs[a.aid]
 
+    def _reinsert_amb(self, a: Amb) -> bool:
+        old = a.aid
+        new = f"{old.split('#')[0]}#r{a.n_reinsert + 1}"
+        try:
+            rt = T.simulation.findRoute(a.last_edge, a.inc.edge, "ambulance")
+            if not rt.edges:
+                return False
+            T.route.add(f"r_{new}", list(rt.edges))
+            T.vehicle.add(new, f"r_{new}", typeID="ambulance", depart="now", departSpeed="0", departLane="best")
+            T.vehicle.setStop(new, a.inc.edge, self.w.edge_len[a.inc.edge] / 2, self._lane(a.inc.edge, "emergency"),
+                              BIG, 0)
+        except T.TraCIException:
+            self.anomalies["amb_reinsert_failed"] += 1
+            return False
+        a.n_reinsert += 1
+        a.record["n_reinsert"] = a.n_reinsert
+        a.inserted = False
+        self.ambs.pop(old, None)
+        a.aid = new
+        self.ambs[new] = a
+        self.anomalies["amb_reinserted"] += 1
+        return True
+
+    def _probe_step(self):
+        e = self.cfg["ems"]
+        while self.probe_feed and self.probe_feed[0].t + e["call_to_dispatch_s"] <= self.t:
+            p = self.probe_feed.popleft()
+            ix, iy = self.w.xy(p.edge)
+            st = min(self.w.stations, key=lambda s: math.dist((s.x, s.y), (ix, iy)))
+            try:
+                rt = T.simulation.findRoute(st.edge, p.edge, "ambulance")
+                if not rt.edges or len(rt.edges) < 2:
+                    continue
+                T.route.add(f"r_{p.iid}", list(rt.edges))
+                T.vehicle.add(p.iid, f"r_{p.iid}", typeID="ambulance", depart="now", departPos=str(st.pos),
+                              departSpeed="0", departLane="best", arrivalPos="max")
+            except T.TraCIException:
+                self.anomalies["probe_launch_failed"] += 1
+                continue
+            self.probes[p.iid] = {"pid": p.iid, "t_call": p.t, "t_dispatch": self.t, "route_m": rt.length,
+                                  "route_est_s": rt.travelTime, "teleported": False, "slow_s": 0.0}
+
     def _amb_go(self, a: Amb, edge: str, pos: float):
         try:
             self._clear_stops(a.aid)
@@ -605,8 +660,15 @@ class Run:
             self.t = T.simulation.getTime()
             self.live = set(T.vehicle.getIDList())
             for vid in T.simulation.getStartingTeleportIDList():
+                if vid in self.probes:
+                    self.probes[vid]["teleported"] = True
                 self.teleports["taxi" if vid.startswith("taxi") else "amb" if vid.startswith("amb") else "bg"] += 1
             for vid in T.simulation.getArrivedIDList():
+                if vid in self.probes:
+                    rec = self.probes.pop(vid)
+                    rec["t_arrive"] = self.t
+                    rec["travel_s"] = self.t - rec["t_dispatch"]
+                    self.probe_log.append(rec)
                 if vid.startswith("taxi"):
                     self.anomalies["taxi_left_network"] += 1
                     self._release_kerb(self.taxis[vid])
@@ -623,6 +685,7 @@ class Run:
                 self._dispatch()
             self._assist_step()
             self._ems_step()
+            self._probe_step()
             if int(self.t) % 30 == 0:
                 self._sample_ts()
             if rep_every and int(self.t) % rep_every == 0:
@@ -632,6 +695,9 @@ class Run:
                 tx.halt["censored"] = True
                 self._close_halt(tx)
             self._close_dwell(tx)
+        for rec in self.probes.values():     # probes still driving at the end: censored
+            rec.update(t_arrive=None, travel_s=self.t - rec["t_dispatch"], censored=True)
+            self.probe_log.append(rec)
         for t_req, kind, vid in self.queue:   # requests never served: wait censored at the end
             self.assist_waits.append({"t_req": t_req, "t_start": None, "wait": self.t - t_req, "kind": kind,
                                       "vid": vid, "censored": True})
@@ -641,7 +707,8 @@ class Run:
     def _sample_ts(self):
         states = Counter(tx.state for tx in self.taxis.values())
         lane_halted = sum(1 for tx in self.taxis.values() if tx.halt and tx.halt["kind"] == "lane")
-        speeds = [v for v in (T.vehicle.getSpeed(v) for v in self.live) if v >= 0]
+        # fresh ID list: vehicles removed earlier in this step (ambulances back at station) are no longer known
+        speeds = [v for v in (T.vehicle.getSpeed(v) for v in T.vehicle.getIDList()) if v >= 0]
         self.ts.append({"t": self.t, "n_veh": len(self.live), "mean_speed": float(np.mean(speeds)) if speeds else 0,
                         "lane_halted": lane_halted, "halted_total": states["HALTED"] + states["HOLD_ASSIST"],
                         "assist_queue": len([q for q in self.queue if q[1] != "fake"]),
@@ -657,8 +724,9 @@ class Run:
             if tx.vid in self.live:
                 x, y = T.vehicle.getPosition(tx.vid)
                 frame["taxi"].append([round(x), round(y), tx.state[:3] + ("L" if tx.halt and tx.halt["kind"] == "lane" else "")])
+        now_live = set(T.vehicle.getIDList())
         for aid in self.ambs:
-            if aid in self.live:
+            if aid in now_live:
                 x, y = T.vehicle.getPosition(aid)
                 frame["amb"].append([round(x), round(y)])
         for vid in list(self.live)[::4]:
@@ -672,7 +740,7 @@ class Run:
         with open(self.out / "config.json", "w") as f:
             json.dump(self.cfg, f, indent=1)
         for name, rows in [("incidents", self.incidents), ("halts", self.halts), ("ts", self.ts),
-                           ("requests", list(self.req_log.values())), ("assist", self.assist_waits)]:
+                           ("requests", list(self.req_log.values())), ("assist", self.assist_waits), ("probes", self.probe_log)]:
             if rows:
                 keys = sorted({k for r in rows for k in r})
                 with open(self.out / f"{name}.csv", "w", newline="") as f:

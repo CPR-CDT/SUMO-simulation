@@ -55,7 +55,8 @@ DEFAULTS: dict = {
         "fake_service_mean_s": 60,
     },
     "ems": {
-        "incidents_per_h": 6.0,   # illustrative "probe" rate for statistical power; real Cat-1 rate in area is lower
+        "incidents_per_h": 6.0,   # illustrative; real Cat-1 rate in area is lower
+        "probes_per_h": 30.0,     # measurement-only blue-light trips (do not use real units)
         "call_to_dispatch_s": 30,
         "on_scene_s": 1200,
         "p_convey": 0.6,

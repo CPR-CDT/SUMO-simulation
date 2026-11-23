@@ -65,3 +65,15 @@ def test_requests_exclude_fake():
 def test_assist_excludes_fake():
     w = [{"t_req": 5, "wait": 100, "kind": "recovery"}, {"t_req": 6, "wait": 999, "kind": "fake"}]
     assert assist_metrics(w, 0, 10)["assist_wait_max_s"] == 100
+
+
+def test_probe_metrics_keeps_censored_and_flags_teleports():
+    from avsim.metrics import probe_metrics
+    P = [{"t_dispatch": 10, "travel_s": 100, "route_est_s": 100, "teleported": False},
+         {"t_dispatch": 20, "travel_s": 300, "route_est_s": 100, "teleported": True},
+         {"t_dispatch": 30, "travel_s": 900, "route_est_s": 100, "teleported": False, "censored": True},
+         {"t_dispatch": 999, "travel_s": 5, "route_est_s": 100, "teleported": False}]
+    m = probe_metrics(P, 0, 100)
+    assert m["probe_n"] == 3 and m["probe_censored"] == 1
+    assert abs(m["probe_share_teleported"] - 1 / 3) < 1e-9
+    assert abs(m["probe_share_ratio_over_1_5"] - 2 / 3) < 1e-9

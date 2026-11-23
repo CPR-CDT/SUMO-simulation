@@ -101,6 +101,26 @@ def taxi_requests(cfg: dict, w: World) -> list[Request]:
     return out
 
 
+def ems_probes(cfg: dict, w: World) -> list[Incident]:
+    """Measurement-only blue-light trips (station -> random point): many travel-time samples per run without
+    using up real ambulance units. Same location model as incidents, own stream."""
+    rate = cfg["ems"].get("probes_per_h", 0) / 3600
+    if rate <= 0:
+        return []
+    rng = np.random.default_rng([cfg["seed"], 207])
+    cands = [e for e in w.stop_edges if (e, "emergency") in w.lane_for]
+    weights = np.array([w.edge_len[e] for e in cands])
+    weights /= weights.sum()
+    t, out, i = 0.0, [], 0
+    while True:
+        t += rng.exponential(1 / rate)
+        if t >= cfg["sim"]["end_s"]:
+            break
+        out.append(Incident(f"probe{i}", t, cands[rng.choice(len(cands), p=weights)]))
+        i += 1
+    return out
+
+
 def ems_incidents(cfg: dict, w: World) -> list[Incident]:
     rng = np.random.default_rng([cfg["seed"], 202])
     rate = cfg["ems"]["incidents_per_h"] / 3600
