@@ -1,6 +1,9 @@
 """Study-area map: road network, EMS sites, taxi stands, attack zones. Writes docs/study_area.png."""
+import sys
 import warnings
+from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import matplotlib
 
 matplotlib.use("Agg")

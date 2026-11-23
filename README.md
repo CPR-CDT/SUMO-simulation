@@ -1,8 +1,12 @@
-# av-cyber-sim
+# STRANDED
 
-**Cyber disruption of an autonomous taxi fleet and its effect on congestion and emergency response: an integrated co-simulation of West London.**
+**S**imulating **T**axi-fleet **R**emote **A**ttacks, **N**etwork **D**elay and **E**mergency **D**ispatch.
+
+Cyber disruption of an autonomous taxi fleet and its effect on congestion and emergency response: an integrated co-simulation of West London. When a robotaxi fleet loses its link to the cloud, vehicles stop. STRANDED models where they stop, who is stuck behind them (passengers, traffic, ambulances), and which fleet response gets everyone moving soonest.
 
 EPSRC CDT in Cyber Physical Risk — Integrator Module 2026-27, Group A.
+
+**Run it now:** jump to [Quick start](#9-running-the-model). It takes about 5 minutes from clone to your first replay.
 
 > **Status: research prototype (Week 8, November 2026).** The model runs end to end.
 > - Headline results are **not** yet published here.
@@ -318,22 +322,112 @@ The full report and the status of each fault are in [`ledger/reviews/redteam-1.m
 
 ## 9. Running the model
 
-Requirements: Python 3.11+ (tested on 3.13). SUMO comes from pip.
+### 9.1 What you need
 
+- **Python 3.11 or newer** (tested on 3.13). Check with `python3 --version`.
+- **Git**, and access to the CPR-CDT GitHub organisation.
+- About **1 GB of disk** for the Python environment, and **2 GB of RAM** per simulation running at once.
+- **No separate SUMO install.** SUMO 1.28 comes from pip (`eclipse-sumo`), with binaries for macOS, Linux and Windows.
+
+### 9.2 Quick start (about 5 minutes)
+
+**Step 1 — Get the code.**
+```bash
+git clone git@github.com:CPR-CDT/SUMO-simulation.git
+cd SUMO-simulation
+```
+> If you see `Password authentication is not supported`, you used the `https://` address. Use the `git@github.com:` (SSH) address above, which needs an SSH key added to your GitHub account.
+
+**Step 2 — Create an isolated Python environment and install everything (1–3 min).**
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install eclipse-sumo libsumo traci sumolib numpy pandas scipy matplotlib pyyaml networkx rtree pyproj pytest tabulate
-.venv/bin/python -m pytest -q tests                              # metric tests
-.venv/bin/python run.py scenarios/A1_P0.yaml --seed 1 --replay     # one run → runs/A1_P0_s1/
-.venv/bin/python scripts/make_replay.py runs/A1_P0_s1              # → runs/A1_P0_s1/replay.html (open in a browser)
-.venv/bin/python batch.py --tag v2 --seeds 1 2 3 4 5 --jobs 7 scenarios/baseline.yaml scenarios/A*.yaml
-.venv/bin/python scripts/analyse.py runs/batch_v2.csv              # paired deltas → runs/results_v2.md, runs/fig_v2.png
-PYTHONPATH=. .venv/bin/python scripts/plot_area.py                  # → docs/study_area.png
-scripts/build_net.sh                                               # rebuild the network from the OSM extract
+.venv/bin/pip install -r requirements.txt
 ```
+On **Windows**, use `.venv\Scripts\python` wherever this guide says `.venv/bin/python`. For example: `.venv\Scripts\pip install -r requirements.txt`.
 
-- **Debugging with sumo-gui:** set `AVSIM_TRACI=1` to use socket TraCI instead of libsumo.
-- **A scenario** is a YAML file that overrides any key of `avsim/config.py` `DEFAULTS`.
+**Step 3 — Check the install.**
+```bash
+.venv/bin/python -c "import sumo, libsumo; print('SUMO OK:', sumo.SUMO_HOME)"
+.venv/bin/python -m pytest -q tests
+```
+You should see `SUMO OK` and `8 passed`.
+
+**Step 4 — Run one scenario (about 2 min).** This is the A1 attack (connectivity loss around Hammersmith Broadway) with the stop-in-lane policy:
+```bash
+.venv/bin/python run.py scenarios/A1_P0.yaml --seed 1 --replay
+```
+- The run prints its metrics as JSON when it finishes, and writes everything to `runs/A1_P0_s1/`.
+- `Warning: Could not set locale to 'C'` is harmless.
+- `--replay` records vehicle positions every 5 s for the animation.
+
+**Step 5 — Watch it.**
+```bash
+.venv/bin/python scripts/make_replay.py runs/A1_P0_s1
+open runs/A1_P0_s1/replay.html        # macOS; on Windows: start runs\A1_P0_s1\replay.html ; on Linux: xdg-open ...
+```
+The page is self-contained (≈ 8 MB) and works offline in any browser.
+- **Colours:** blue = robotaxis moving or idle; pink = halted **in a lane**; amber = halted at the kerb or in a harbour; red = ambulances.
+- **Markers:** the dashed ring is the attack zone, `+` marks ambulance stations and `H` marks hospitals.
+- **Controls:** use the slider and speed menu to scrub through the 90 minutes.
+
+**Step 6 — Compare with the baseline.** Every arm is meant to be compared with the **same-seed baseline**:
+```bash
+.venv/bin/python run.py scenarios/baseline.yaml --seed 1
+```
+Then compare `runs/baseline_s1/summary.json` with `runs/A1_P0_s1/summary.json`. The keys are explained in [§6](#6-outcome-metrics).
+
+### 9.3 Running the full experiment
+
+```bash
+# 10 arms × 5 seeds = 50 runs. With --jobs 7 this takes ~25–35 min on an 8-core laptop.
+# Set --jobs to (CPU cores − 1).
+.venv/bin/python batch.py --tag v2 --seeds 1 2 3 4 5 --jobs 7 \
+    scenarios/baseline.yaml scenarios/A1_P0.yaml scenarios/A1_P1.yaml scenarios/A1_P2.yaml \
+    scenarios/A2_P0.yaml scenarios/A2_P1.yaml scenarios/A2_P2.yaml scenarios/A3.yaml scenarios/A5.yaml scenarios/A5_low.yaml
+
+# Check arms (null cases, noise floor, sensitivity bounds), 3 seeds:
+.venv/bin/python batch.py --tag null2 --seeds 1 2 3 --jobs 7 scenarios/baseline.yaml scenarios/null/*.yaml
+
+# Paired differences vs baseline with 95% CIs: writes runs/results_v2.md (table) and runs/fig_v2.png (figure)
+.venv/bin/python scripts/analyse.py runs/batch_v2.csv
+```
+- `batch.py` prints one line per finished run and writes `runs/batch_<tag>.csv`, one row per run.
+- A run that fails shows `ERROR` with the last lines of its error, and the batch carries on.
+
+### 9.4 Making your own scenario
+
+A scenario is a small YAML file that overrides any default in `avsim/config.py` (`DEFAULTS`). Every default is documented in `params.csv`. For example, `scenarios/my_test.yaml`:
+```yaml
+name: A1_P1_big_zone          # output folder: runs/A1_P1_big_zone_s<seed>/
+policy: P1                    # P0 stop in lane | P1 pull over | P2 safe harbour
+fleet: {n_taxis: 300}         # twice the fleet
+assist: {operators: 12}       # twice the remote-assist staff
+attacks:
+  - {type: A1, start_s: 1800, duration_s: 1800, centre: hammersmith_broadway, radius_m: 1200}
+```
+Run it with `.venv/bin/python run.py scenarios/my_test.yaml --seed 1`.
+- **Attack types:** `A1` (zone link loss), `A2` (fleet outage), `A3` (ghost bookings; needs `rate_per_h`), `A5` (assist flood; needs `rate_per_h`). Several can be listed.
+- **Named centres** (in `avsim/attacks.py`): `hammersmith_broadway`, `charing_cross_hosp`, `chelsea_westminster_hosp`, `fulham_broadway`, `earls_court`. Or give `[lat, lon]`.
+- **Shorter test runs:** `--end 2400` stops at 40 simulated minutes.
+- **Keep comparisons paired:** compare arms only with a baseline of the same seed and the same non-attack settings.
+
+### 9.5 Other tools
+
+| Task | Command |
+|---|---|
+| Redraw the study-area map | `.venv/bin/python scripts/plot_area.py` → `docs/study_area.png` |
+| Rebuild the SUMO network from the stored OSM extract | `scripts/build_net.sh` (≈ 30 s) |
+| Watch in SUMO's own GUI (slower) | `AVSIM_TRACI=1 .venv/bin/python run.py ...` uses socket TraCI. Replace `sumo` with `sumo-gui` in `avsim/sim.py:start` for the GUI. On macOS the GUI needs XQuartz. |
+
+### 9.6 Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| `ModuleNotFoundError: libsumo` / `sumo` | The environment isn't active or the install failed: rerun step 2 and call `.venv/bin/python` explicitly. |
+| Run exits with code 139 (segfault) | A SUMO crash. It was seen with ambulance opposite-lane overtaking, which is now off (`ems.lc_opposite: 0`). Rerun with `AVSIM_TRACI=1` to get a readable error, and report it with the scenario and seed. |
+| `Overpass ... at capacity` when refetching OSM | The public Overpass server is busy. The repository already contains the extract, so you only need it to change the area. Retry later, or use a mirror. |
+| Very slow runs or a growing vehicle count in `ts.csv` | Background demand too high for the network (`background.period_s` below about 1.0 supersaturates). Keep the default unless you are calibrating. |
+| First run is slow | The first run for each seed generates background routes (≈ 10 s) and caches them in `data/cache/`. |
 
 **Outputs per run** (`runs/<name>_s<seed>/`):
 
@@ -364,6 +458,7 @@ scenarios/       main arms; null/ = check arms
 tests/           metric unit tests
 data/            OSM extract, SUMO network, EMS sites (cache/ is generated)
 docs/            figures
+requirements.txt pinned Python dependencies (SUMO included)
 params.csv       parameter register (value, grade, source, bias direction)
 DECISIONS.md     decision and assumption log
 ledger/          work-item cards and reviews (red team)
