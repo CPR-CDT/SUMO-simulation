@@ -2,6 +2,17 @@
 
 Newest first. Each entry: date (UTC), decision, reason, who. Rules live in files (playbook Rule 0).
 
+- **2026-11-23** — v3 (no segfaults after the bluelight fix; 5 runs failed on a sampler bug, fixed and rerun individually) showed:
+  - large, clear effects on AV lane blocking, background delay, stranded passengers, assist waits and unserved trips;
+  - but the ambulance *response* increase came **only from censored calls**. Ambulances stuck ≥ 300 s were teleported by SUMO past their scene stop and removed at route end, so the call was never answered. Meanwhile *travel* among arrived calls fell (survivorship);
+  - EMS sample: only ~5 scored calls per run.
+
+  Decisions:
+  1. An ambulance teleported away on its way to a scene is **re-inserted** where it was last seen and continues, so the call is answered late, not never (the teleport still skips part of the jam, so delay is understated).
+  2. **Probe blue-light trips** at 30/h (measurement only, no real units used) for statistical power: travel / route-estimate ratio, share > 1.5×, share teleported (= stuck ≥ 5 min).
+
+  v3 EMS numbers are not used; full rerun as v4. (Claude)
+
 - **2026-11-23** — Batch v2 had 10/50 main and 17/39 check runs crash with SUMO segfaults, despite ambulance opposite-overtaking being off. Diagnosis on baseline seed 2 (crash at t≈3272 s inside a SUMO step, 7 s after our last command): opposite-lane-free network → still crashes; bluelight device off → clean, on both networks. Decision: **bluelight device off**, replaced by red-light pass (≤ 20 km/h). v2 discarded; full rerun as **v3**. Also: the logged collisions come from opposite-lane overtaking (0 collisions on the opposite-free net); the opposites net is kept so ordinary drivers can pass halted AVs. Route-cache race fixed (atomic write, net name in key). (Claude)
 - **2026-11-23** — v2 null checks that completed before the crash fix all held **exactly**: N_dur0, N_r0, N_base_P1, N_base_P2 = baseline to every decimal; N_0av_A1 = N_0av_base. N_teleoff arms showed lane-blocking roughly 2× higher with teleport off, confirming red-team fault 3: teleports hide blockage. These checks are repeated in null3.
 
