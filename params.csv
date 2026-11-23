@@ -1,5 +1,5 @@
 key,value,unit,grade,source_or_reason,bias_direction_on_harm_estimate,owner_to_check
-background.period_s,0.6 (tuning),s per inserted vehicle,illustrative,randomTrips uniform OD; not yet calibrated to DfT AADF counts,unknown: too high demand exaggerates congestion spillover from halts (overstates harm); too low understates,review team: DfT road-traffic counts for A4/A219/A3220
+background.period_s,1.0,s per inserted vehicle,illustrative,randomTrips uniform OD (~3600 veh/h); chosen as highest tested level giving a stationary network (0.6 and 0.8 s supersaturate); mean speed ~22 km/h; not yet calibrated to DfT counts,unknown: too high demand exaggerates congestion spillover from halts (overstates harm); too low understates,review team: DfT road-traffic counts for A4/A219/A3220
 fleet.n_taxis,150,vehicles,assumption,order-of-magnitude for one operator's early London deployment; to anchor on announced London plans,more AVs -> more halts -> overstates if real fleet smaller,review team
 fleet.requests_per_h,300,trips/h,assumption,gives ~50% utilisation for 150 AVs,more in-trip AVs at attack onset -> more stranded passengers,
 fleet.kerb_fraction,0.3,share,assumption,London kerbside is mostly restricted (yellow lines; bus stops; bays); needs TfL kerbside data,lower -> more in-lane stops -> overstates P1 failure,review team: TfL kerbside / parking data
@@ -32,3 +32,11 @@ attack.A3.rate_per_h,300,fake trips/h,illustrative,equal to real demand rate,,
 attack.A5.rate_per_h,600,fake assists/h,illustrative,saturates 6 operators at 60 s each,,
 network,OSM 2026-11-23 bbox 51.465..51.512 / -0.245..-0.170,,evidence,OpenStreetMap (ODbL) via Overpass; netconvert lefthand + opposites.guess,,
 ems sites,Fulham AS; Chiswick AS; Charing Cross H; Chelsea & Westminster H,,evidence,OSM via Nominatim; ambulance unit counts (4; 3) are assumptions,,LAS
+ems.lc_opposite,0,flag,assumption,opposite-lane overtaking disabled for ambulances: SUMO 1.28 segfaults with it on,ambulances cannot pass halted AVs on single-lane roads -> overstates EMS delay,report SUMO bug; retest on newer SUMO
+ems.bluelight,on,flag,assumption,SUMO bluelight device (rescue lane; red-light behaviour per SUMO defaults),,
+fleet.rider_cancel_s,1200,s,assumption,rider cancels if not picked up within 20 min (hard-coded in sim._req_alive),,
+fleet.pickup_dwell_s / dropoff_dwell_s,30 / 30,s,assumption,,longer -> more kerb/lane occupancy,
+halt.braking_decel,3.0,m/s2,assumption,comfortable braking for MRC stop placement (+30 m lane-change allowance for kerb pull-over),,
+ems.units,Fulham 4; Chiswick 3,units,assumption,station unit counts not public in this form,fewer -> more unit queueing,LAS
+fleet.auto_resume_on_restore,False,flag,assumption,every link-loss halt needs an operator to clear it (as in reported 2023 SF stalls; to verify); sensitivity arm N_autoresume_A1,True -> much shorter recovery,review
+analysis.calls_end_s,4200,s,design,EMS calls scored only up to 70 min so every call has >=20 min to be reached before the run ends,,

@@ -1,0 +1,14 @@
+{
+  "updated_utc": "2026-11-23",
+  "status": "RESEARCH PROTOTYPE - runs end to end; no headline results claimed yet",
+  "implemented": ["West London SUMO network (OSM, left-hand)", "fleet management: dispatch, heartbeat, MRC, kerb capacity",
+                  "remote-assist queue with feedback from congestion", "EMS dispatch cycle with 2 stations / 2 A&E",
+                  "attacks A1 A2 A3 A5", "policies P0 P1 P2", "common-random-number streams", "metrics with survivorship rules",
+                  "batch runner, paired analysis, replay viewer"],
+  "not_implemented": ["attacks A4 A6 A7 CC1", "policies P3-P6", "coordinator agent", "demand calibration to DfT counts",
+                      "global sensitivity analysis", "known-case validation"],
+  "unit_tests": {"total": 8, "passed": 8},
+  "red_team": {"rounds": 1, "verdict": "demo pass / paper fail", "high_confidence_faults_fixed": 8, "open": ["P1 kerb bookkeeping", "teleport cap on blockage", "operator-needed recovery assumption"]},
+  "batches": {"v1": "discarded: ran on pre-fix code, never analysed", "v2": "running", "null2": "queued after v2"},
+  "known_issues": ["ambulance opposite-lane overtaking disabled (SUMO 1.28 segfault)", "collisions logged at low rate", "background demand uncalibrated"]
+}
