@@ -33,7 +33,8 @@ attack.A5.rate_per_h,600,fake assists/h,illustrative,saturates 6 operators at 60
 network,OSM 2026-11-23 bbox 51.465..51.512 / -0.245..-0.170,,evidence,OpenStreetMap (ODbL) via Overpass; netconvert lefthand + opposites.guess,,
 ems sites,Fulham AS; Chiswick AS; Charing Cross H; Chelsea & Westminster H,,evidence,OSM via Nominatim; ambulance unit counts (4; 3) are assumptions,,LAS
 ems.lc_opposite,0,flag,assumption,opposite-lane overtaking disabled for ambulances: SUMO 1.28 segfaults with it on,ambulances cannot pass halted AVs on single-lane roads -> overstates EMS delay,report SUMO bug; retest on newer SUMO
-ems.bluelight,on,flag,assumption,SUMO bluelight device (rescue lane; red-light behaviour per SUMO defaults),,
+ems.bluelight,off,flag,assumption,SUMO 1.28 bluelight device segfaults intermittently (baseline seed 2 at t~3272 s: device off -> clean); replaced by red-light pass,others do not yield to ambulances -> ambulance times biased up in all arms; may overstate AV-blockage delay,retest on newer SUMO
+ems.red_speed_ms,5.56,m/s,assumption,ambulance may cross red lights at <= 20 km/h (jmDriveAfterRedTime 1e6),,
 fleet.rider_cancel_s,1200,s,assumption,rider cancels if not picked up within 20 min (hard-coded in sim._req_alive),,
 fleet.pickup_dwell_s / dropoff_dwell_s,30 / 30,s,assumption,,longer -> more kerb/lane occupancy,
 halt.braking_decel,3.0,m/s2,assumption,comfortable braking for MRC stop placement (+30 m lane-change allowance for kerb pull-over),,

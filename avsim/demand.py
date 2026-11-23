@@ -10,6 +10,8 @@ import subprocess
 import sys
 from dataclasses import dataclass
 
+from pathlib import Path
+
 import numpy as np
 
 from .config import ROOT
@@ -18,7 +20,7 @@ from .world import World
 VTYPES_XML = """<additional>
   <vType id="robotaxi" vClass="passenger" color="0,170,255" length="5.0" accel="2.0" decel="4.0" sigma="0.0"/>
   <vType id="ambulance" vClass="emergency" guiShape="emergency" color="255,40,40" length="6.5" maxSpeed="40"
-         speedFactor="{amb_sf}" speedDev="0" accel="2.6" decel="4.5" sigma="0.0" lcOpposite="{amb_opp}">
+         speedFactor="{amb_sf}" speedDev="0" accel="2.6" decel="4.5" sigma="0.0" lcOpposite="{amb_opp}" {redlight}>
     {bluelight}
   </vType>
 </additional>
@@ -35,8 +37,11 @@ def background_routes(cfg: dict) -> str:
     bg = cfg["background"]
     cache = ROOT / "data" / "cache"
     cache.mkdir(parents=True, exist_ok=True)
-    out = cache / f"bg_s{cfg['seed']}_p{bg['period_s']}_f{bg['fringe_factor']}_e{cfg['sim']['end_s']}.rou.xml"
+    net_tag = Path(cfg["net"]).stem
+    out = cache / f"bg_{net_tag}_s{cfg['seed']}_p{bg['period_s']}_f{bg['fringe_factor']}_e{cfg['sim']['end_s']}.rou.xml"
     if not out.exists():
+        final = out
+        out = cache / f"tmp_{os.getpid()}_{final.name}"
         tool = os.path.join(sumo_home(), "tools", "randomTrips.py")
         tmp_trips = out.with_suffix(".trips.xml")
         subprocess.run([sys.executable, tool, "-n", str(ROOT / cfg["net"]), "-o", str(tmp_trips), "-r", str(out),
@@ -48,6 +53,8 @@ def background_routes(cfg: dict) -> str:
         # "--" makes the file invalid XML, so drop comments from the generated file
         import re
         out.write_text(re.sub(r"<!--.*?-->", "", out.read_text(), flags=re.S))
+        os.replace(out, final)   # atomic: parallel runs never see a half-written file
+        out = final
     return str(out)
 
 
@@ -55,7 +62,11 @@ def vtypes_file(cfg: dict, run_dir) -> str:
     p = run_dir / "vtypes.add.xml"
     e = cfg["ems"]
     bl = '<param key="has.bluelight.device" value="true"/>' if e.get("bluelight", True) else ""
-    p.write_text(VTYPES_XML.format(amb_sf=e["amb_speed_factor"], amb_opp=e.get("lc_opposite", 1), bluelight=bl))
+    # Without the bluelight device, approximate blue-light running: may cross a red light at <= red_speed
+    rl = (f'jmDriveAfterRedTime="1e6" jmDriveRedSpeed="{e.get("red_speed_ms", 5.56)}"'
+          if e.get("red_light_pass", True) else "")
+    p.write_text(VTYPES_XML.format(amb_sf=e["amb_speed_factor"], amb_opp=e.get("lc_opposite", 1), bluelight=bl,
+                                   redlight=rl))
     return str(p)
 
 

@@ -98,7 +98,7 @@ Hammersmith Hospital and St Mary's lie just outside the box.
            ▼                                                     ▼
   ┌──────────────────────────────────────────────────────────────────────────┐
   │ PHYSICAL: SUMO 1.28 microsimulation (1 s step), West London OSM network   │
-  │ background traffic · 150 robotaxis · ambulances (bluelight device)        │
+  │ background traffic · 150 robotaxis · ambulances (red-light pass, 1.2× speed) │
   │ signals · lane occupancy · queues and spillback · kerb capacity           │
   └──────────────────────────────────┬───────────────────────────────────────┘
                                      ▼
@@ -113,7 +113,7 @@ The Python layers and SUMO exchange state **every simulated second** in one proc
 | Loop | Mechanism | Code |
 |---|---|---|
 | **Link loss → halt → blockage** | AVs that lose the link for longer than the heartbeat timeout perform a minimal-risk-condition (MRC) stop. Where they stop depends on the policy; an in-lane stop occupies the lane. | `sim._fleet_step`, `_on_link_lost`, `_halt_here` |
-| **Blockage → congestion → ambulance delay** | SUMO car-following, lane changing and signal queues propagate the blockage; ambulances are ordinary vehicles in that traffic, with the bluelight device. | SUMO |
+| **Blockage → congestion → ambulance delay** | SUMO car-following, lane changing and signal queues propagate the blockage. Ambulances drive in that traffic at 1.2× the speed limit and may cross red lights at ≤ 20 km/h. Other drivers do not actively yield (see limitations). | SUMO |
 | **Congestion → assist demand → longer holds** (positive feedback) | An AV waiting > `stuck_wait_s` in traffic asks for remote assistance with probability `p_stuck_assist` and holds its lane until served. | `_fleet_step` |
 | **Assist queue → recovery time** | Every halted AV needs an operator to clear it after the link returns. With K operators the queue sets how long blockages last; A5 adds fake load. | `_assist_step` |
 | **Ghost bookings → convergence → dwell** | Fake trip requests draw AVs to one zone. Each waits `no_show_wait_s` at the kerb, or in the lane once the kerb is full. | `_dispatch`, `_place_stop` |
@@ -206,7 +206,7 @@ The policies differ only after a link loss, so the baseline is identical under P
 5. After 20 min on scene, the patient is conveyed with probability 0.6 (pre-drawn per incident) to the nearest A&E, followed by a 15 min handover. The ambulance then returns to its station, where the unit becomes free.
 6. An ambulance that SUMO removes (for example, after a teleport) frees its unit and is counted as an anomaly.
 
-Ambulance vType: emergency class, bluelight device, speed factor 1.2. **Opposite-lane overtaking is disabled**, because SUMO 1.28 segfaults with it enabled (see limitations).
+Ambulance vType: emergency class, speed factor 1.2, allowed to cross red lights at ≤ 20 km/h (`jmDriveAfterRedTime`, `jmDriveRedSpeed`). SUMO's **bluelight device is off** and **opposite-lane overtaking is off**, because SUMO 1.28 segfaulted intermittently with the device on (diagnosed on a crashing seed: device off → clean). Other drivers therefore do not form rescue lanes or pull aside for ambulances. This biases ambulance times **upwards in every arm**, and may overstate how much a halted AV delays an ambulance.
 
 ### 4.6 Run control
 
@@ -312,7 +312,7 @@ The full report and the status of each fault are in [`ledger/reviews/redteam-1.m
 
 ### 8.3 Known limitations (open)
 
-- **Ambulances cannot overtake through the opposite lane** (SUMO 1.28 crash). Behind a halted AV on a single-lane road, the delay is bounded only by SUMO's 300 s teleport. This **overstates** EMS delay. The teleport-off arms measure the effect.
+- **Ambulances have no blue-light priority beyond crossing red lights slowly**: no rescue lanes, no opposite-lane overtaking (both disabled after SUMO 1.28 crashes). Behind a halted AV on a single-lane road, the delay is bounded only by SUMO's 300 s teleport. This **overstates** EMS delay. The teleport-off arms measure the effect.
 - **P1's benefit rests on kerb bookkeeping.** SUMO parking stops take no physical space, so whether P1 works depends on `kerb_fraction` (an assumption).
 - **Every link-loss halt needs an operator**, so recovery time is set by `operators` and `service_mean`. Bounded by N_autoresume_A1 and swept in C4.
 - **Background demand is uniform random OD**, not calibrated. There is no bus network, and no pedestrian or cyclist interaction.
@@ -424,7 +424,7 @@ Run it with `.venv/bin/python run.py scenarios/my_test.yaml --seed 1`.
 | Symptom | Cause and fix |
 |---|---|
 | `ModuleNotFoundError: libsumo` / `sumo` | The environment isn't active or the install failed: rerun step 2 and call `.venv/bin/python` explicitly. |
-| Run exits with code 139 (segfault) | A SUMO crash. It was seen with ambulance opposite-lane overtaking, which is now off (`ems.lc_opposite: 0`). Rerun with `AVSIM_TRACI=1` to get a readable error, and report it with the scenario and seed. |
+| Run exits with code 139 / −11 (segfault) | A SUMO crash. It was traced to SUMO's bluelight device, now off (`ems.bluelight: false`). If it recurs, rerun with `AVSIM_TRACI=1` to find the simulated time, and report it with the scenario and seed. Never drop crashed runs silently: `batch.py` lists them as `ERROR`. |
 | `Overpass ... at capacity` when refetching OSM | The public Overpass server is busy. The repository already contains the extract, so you only need it to change the area. Retry later, or use a mirror. |
 | Very slow runs or a growing vehicle count in `ts.csv` | Background demand too high for the network (`background.period_s` below about 1.0 supersaturates). Keep the default unless you are calibrating. |
 | First run is slow | The first run for each seed generates background routes (≈ 10 s) and caches them in `data/cache/`. |

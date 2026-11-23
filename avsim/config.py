@@ -61,8 +61,10 @@ DEFAULTS: dict = {
         "p_convey": 0.6,
         "handover_s": 900,
         "amb_speed_factor": 1.2,
-        "lc_opposite": 0,         # opposite-lane overtaking off: SUMO 1.28 segfaults with it on (see DECISIONS.md)
-        "bluelight": True,
+        "lc_opposite": 0,         # ambulance opposite-lane overtaking off (see DECISIONS.md)
+        "bluelight": False,       # SUMO 1.28 bluelight device segfaults intermittently (DECISIONS.md)
+        "red_light_pass": True,   # approximation instead: may cross red lights at <= red_speed_ms
+        "red_speed_ms": 5.56,     # 20 km/h
         "cat1_p90_target_s": 900,
         "cat1_mean_target_s": 420,
     },
