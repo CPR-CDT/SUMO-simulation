@@ -44,6 +44,10 @@ def background_routes(cfg: dict) -> str:
                         "--fringe-factor", str(bg["fringe_factor"]), "--vehicle-class", "passenger",
                         "--validate", "--seed", str(cfg["seed"]), "--prefix", "bg"],
                        check=True, capture_output=True)
+        # randomTrips writes its command line (with absolute paths) into an XML comment; a path containing
+        # "--" makes the file invalid XML, so drop comments from the generated file
+        import re
+        out.write_text(re.sub(r"<!--.*?-->", "", out.read_text(), flags=re.S))
     return str(out)
 
 
