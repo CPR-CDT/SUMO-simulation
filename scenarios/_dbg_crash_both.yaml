@@ -1,0 +1,4 @@
+name: crash_both
+seed: 2
+net: data/net/west_london_noopp.net.xml
+ems: {bluelight: false}

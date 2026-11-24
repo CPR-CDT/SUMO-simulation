@@ -59,18 +59,19 @@ for(const [m,pts] of D.roads){b.strokeStyle=m?'#45505c':'#262e37';b.lineWidth=m?
 const sl=document.getElementById('slider');sl.max=D.frames.length-1;let i=0,playing=true;
 document.getElementById('play').onclick=e=>{playing=!playing;e.target.textContent=playing?'Pause':'Play'};
 sl.oninput=()=>{i=+sl.value;draw()};
-function col(s){if(s.endsWith('L'))return'#ff4fd8';if(s.startsWith('HAL')||s.startsWith('HOL'))return'#ffb000';return'#3fa9f5'}
+const lane=s=>s.length===4&&s[3]==='L';
+function col(s){if(lane(s))return'#ff4fd8';if(s.startsWith('HAL')||s.startsWith('HOL'))return'#ffb000';return'#3fa9f5'}
 function draw(){const f=D.frames[i];g.drawImage(base,0,0);
  for(const a of D.attacks){if(a.x===undefined)continue;const on=f.t>=a.start_s&&f.t<a.end_s;
   g.setLineDash([6,4]);g.strokeStyle=on?'#ff4fd8':'#5a4a58';g.lineWidth=2;g.beginPath();g.arc(sx(a.x),sy(a.y),sr(a.radius_m),0,7);g.stroke();g.setLineDash([]);}
  g.fillStyle='#7d8590';for(const [x,y] of f.bg)g.fillRect(sx(x)-1,sy(y)-1,2,2);
- for(const [x,y,s] of f.taxi){g.fillStyle=col(s);g.beginPath();g.arc(sx(x),sy(y),s.endsWith('L')?4:2.6,0,7);g.fill();}
+ for(const [x,y,s] of f.taxi){g.fillStyle=col(s);g.beginPath();g.arc(sx(x),sy(y),lane(s)?4:2.6,0,7);g.fill();}
  g.fillStyle='#ff3030';for(const [x,y] of f.amb){g.beginPath();g.arc(sx(x),sy(y),5,0,7);g.fill();}
  g.font='bold 13px system-ui';g.fillStyle='#fff';
  for(const s of D.stations)g.fillText('+',sx(s.x)-4,sy(s.y)+4);for(const h of D.hospitals)g.fillText('H',sx(h.x)-4,sy(h.y)+4);
  const act=D.attacks.filter(a=>f.t>=a.start_s&&f.t<a.end_s).map(a=>a.type).join(', ');
- const lane=f.taxi.filter(t=>t[2].endsWith('L')).length;
- document.getElementById('clock').textContent=`t = ${Math.floor(f.t/60)} min · attack: ${act||'none'} · AVs halted in lane: ${lane} · ambulances out: ${f.amb.length}`;
+ const nLane=f.taxi.filter(t=>lane(t[2])).length;
+ document.getElementById('clock').textContent=`t = ${Math.floor(f.t/60)} min · attack: ${act||'none'} · AVs halted in lane: ${nLane} · ambulances out: ${f.amb.length}`;
  sl.value=i;}
 let last=0;function loop(ts){if(playing&&ts-last>200/ +document.getElementById('speed').value){last=ts;i=(i+1)%D.frames.length;draw();}requestAnimationFrame(loop)}
 draw();requestAnimationFrame(loop);

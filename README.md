@@ -13,6 +13,21 @@ EPSRC CDT in Cyber Physical Risk — Integrator Module 2026-27, Group A.
 > - The results are **not yet calibrated or externally validated**.
 > - `STATUS.json` and `VALIDATION.md` state exactly what has and has not been verified.
 
+## Demo
+
+**Fleet backend outage (A2), 30–50 min: stop in lane (left) vs safe harbour (right).** Same seed, same traffic, same calls. Under stop-in-lane, 66 robotaxis are halted in traffic lanes at minute 49 (pink); under safe harbour, 2 are (amber = parked off the carriageway).
+
+![A2 outage: stop in lane vs safe harbour](docs/demos/A2_P0_vs_P2.gif)
+
+**Zonal link loss (A1) around Hammersmith Broadway, stop in lane.** Vehicles inside the dashed ring halt where they are; blockage persists after the attack ends because recovery waits for remote-assist operators.
+
+![A1 zonal link loss, stop in lane](docs/demos/A1_P0.gif)
+
+- Simulated minutes 25–75, one frame per 30 s of simulated time. Pink = robotaxi halted in a lane, amber = halted at kerb or harbour, blue = moving or idle, red = ambulance, grey = other traffic (1 in 4 shown), `+` = ambulance station, `H` = A&E.
+- Higher-quality MP4s: [A2 side by side](docs/demos/A2_P0_vs_P2.mp4), [A1](docs/demos/A1_P0.mp4).
+- Interactive replays with a slider (download, then open in a browser; GitHub shows only the source): [A2 stop in lane](docs/demos/A2_P0_replay.html), [A2 safe harbour](docs/demos/A2_P2_replay.html), [A1 stop in lane](docs/demos/A1_P0_replay.html).
+- These are single illustrative runs (seed 1). The numbers to cite are the paired multi-seed results in [§8.4](#84-preliminary-results-batch-v4).
+
 ---
 
 ## Contents
@@ -382,7 +397,7 @@ On **Windows**, use `.venv\Scripts\python` wherever this guide says `.venv/bin/p
 .venv/bin/python -c "import sumo, libsumo; print('SUMO OK:', sumo.SUMO_HOME)"
 .venv/bin/python -m pytest -q tests
 ```
-You should see `SUMO OK` and `8 passed`.
+You should see `SUMO OK` and `9 passed`.
 
 **Step 4 — Run one scenario (about 2 min).** This is the A1 attack (connectivity loss around Hammersmith Broadway) with the stop-in-lane policy:
 ```bash
@@ -448,6 +463,7 @@ Run it with `.venv/bin/python run.py scenarios/my_test.yaml --seed 1`.
 | Task | Command |
 |---|---|
 | Redraw the study-area map | `.venv/bin/python scripts/plot_area.py` → `docs/study_area.png` |
+| Render runs as MP4 + GIF (side by side if several) | `.venv/bin/python scripts/make_video.py docs/demos/name runs/A2_P0_s1 runs/A2_P2_s1` (runs need `--replay`) |
 | Rebuild the SUMO network from the stored OSM extract | `scripts/build_net.sh` (≈ 30 s) |
 | Watch in SUMO's own GUI (slower) | `AVSIM_TRACI=1 .venv/bin/python run.py ...` uses socket TraCI. Replace `sumo` with `sumo-gui` in `avsim/sim.py:start` for the GUI. On macOS the GUI needs XQuartz. |
 
@@ -485,11 +501,11 @@ avsim/
   metrics.py     outcome metrics (pure, tested)
 run.py           one scenario
 batch.py         scenarios × seeds in parallel
-scripts/         build_net.sh, analyse.py, make_replay.py, plot_area.py
+scripts/         build_net.sh, analyse.py, make_replay.py, make_video.py, plot_area.py
 scenarios/       main arms; null/ = check arms
 tests/           metric unit tests
 data/            OSM extract, SUMO network, EMS sites (cache/ is generated)
-docs/            figures
+docs/            figures, results tables, demos/ (videos and interactive replays)
 requirements.txt pinned Python dependencies (SUMO included)
 params.csv       parameter register (value, grade, source, bias direction)
 DECISIONS.md     decision and assumption log

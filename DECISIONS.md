@@ -2,6 +2,8 @@
 
 Newest first. Each entry: date (UTC), decision, reason, who. Rules live in files (playbook Rule 0).
 
+- **2026-11-24** — Demo videos added (`scripts/make_video.py`, `docs/demos/`). While checking the frames, found a **display bug in the replay viewer**: kerb/harbour halts (state code `HAL`) were drawn and counted as halted *in lane*, because the test was "code ends in L". Fixed in `make_replay.py` and `make_video.py`; the HTML replays were regenerated. Metrics were never affected (they use the halt record, not the replay code), but the "70 AVs halted in lane at minute 49" quoted for the A2_P0 replay was inflated: the correct figure is **66**. Also committed for traceability: the opposite-lane-free network and the `_dbg_crash_*` scenarios used in the segfault diagnosis (header comment stripped). (Claude)
+
 - **2026-11-23** — **v4 is the current result set**: 89 runs, 0 failures. Results and checks are in `docs/results/`, with a summary in README §8.4.
   - All exact-identity null checks hold, except one non-reproducible late divergence (N_base_P1 seed 2, after t = 5093 s, 0.6 veh-h). Same-config reruns and three Python hash seeds were all bit-identical, so the cause is not found. Logged as an open issue, with a size below the noise floor.
   - Teleport-off arms are inconclusive: the baseline itself gridlocks without teleports in some seeds.
